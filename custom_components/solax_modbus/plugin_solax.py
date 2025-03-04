@@ -6843,6 +6843,7 @@ SENSOR_TYPES_MAIN: list[SolaXModbusSensorEntityDescription] = [
         value_function=value_function_remotecontrol_autorepeat_remaining,
         allowedtypes=AC | HYBRID | GEN4 | GEN5,
         icon="mdi:home-clock",
+        scan_group=SCAN_GROUP_FAST,
     ),
     SolaXModbusSensorEntityDescription(
         key="software_version",
@@ -7678,6 +7679,7 @@ SENSOR_TYPES_MAIN: list[SolaXModbusSensorEntityDescription] = [
         register=0x409,
         register_type=REG_INPUT,
         allowedtypes=MIC | GEN4 | GEN5,
+        scan_group=SCAN_GROUP_FAST,
     ),
     SolaXModbusSensorEntityDescription(
         name="PV Voltage 1",
