@@ -4356,6 +4356,7 @@ SENSOR_TYPES_MAIN: list[SolaXModbusSensorEntityDescription] = [
         register_type=REG_INPUT,
         unit=REGISTER_S16,
         allowedtypes=AC | HYBRID | GEN2 | GEN3 | GEN4,
+        scan_group=SCAN_GROUP_FAST,
     ),
     SolaXModbusSensorEntityDescription(
         name="Inverter Power",
@@ -4622,6 +4623,7 @@ SENSOR_TYPES_MAIN: list[SolaXModbusSensorEntityDescription] = [
         unit=REGISTER_S16,
         allowedtypes=AC | HYBRID | GEN2 | GEN3 | GEN4,
         icon="mdi:battery-charging",
+        scan_group=SCAN_GROUP_FAST,
     ),
     SolaXModbusSensorEntityDescription(
         name="Battery 1 Power Charge",
@@ -4975,6 +4977,7 @@ SENSOR_TYPES_MAIN: list[SolaXModbusSensorEntityDescription] = [
         register_type=REG_INPUT,
         unit=REGISTER_S32,
         allowedtypes=AC | HYBRID,
+        scan_group=SCAN_GROUP_FAST,
     ),
     SolaXModbusSensorEntityDescription(
         name="Grid Export Total",
