@@ -1055,6 +1055,12 @@ class SolaXModbusHub:
 
         #for key, value in data.items(): # remove for issue #1440, but then does not recognize communication errors anymore
         #    self.data[key] = value # remove for issue #1440, but then comm errors are not detected
+#        for key, value in data.items():
+#            self.data[key] = value
+            
+#        for reg in self.computedSensors:
+#            descr = self.computedSensors[reg]
+#            self.data[descr.key] = descr.value_function(0, descr, self.data)
 
         if res and self.writequeue and self.plugin.isAwake(self.data):  # self.awakeplugin(self.data):
             # process outstanding write requests
