@@ -147,10 +147,10 @@ def autorepeat_function_remotecontrol_recompute(initval, descr, datadict):
     if power_control == "Enabled Power Control":
         ap_target = target
     elif power_control == "Enabled Grid Control":  # alternative computation for Power Control
-        if target < 0:
-            ap_target = target - houseload_nett  # subtract house load
-        else:
-            ap_target = target - houseload_brut
+#        if target < 0:
+         ap_target = target - houseload_nett  # subtract house load
+#        else:
+#            ap_target = target - houseload_brut
         power_control = "Enabled Power Control"
     elif power_control == "Enabled Self Use":  # alternative computation for Power Control
         ap_target = 0 - houseload_nett  # subtract house load
@@ -4623,7 +4623,7 @@ SENSOR_TYPES_MAIN: list[SolaXModbusSensorEntityDescription] = [
         unit=REGISTER_S16,
         allowedtypes=AC | HYBRID | GEN2 | GEN3 | GEN4,
         icon="mdi:battery-charging",
-        scan_group=SCAN_GROUP_FAST,
+        #scan_group=SCAN_GROUP_FAST,
     ),
     SolaXModbusSensorEntityDescription(
         name="Battery 1 Power Charge",
@@ -6945,7 +6945,6 @@ SENSOR_TYPES_MAIN: list[SolaXModbusSensorEntityDescription] = [
         value_function=value_function_remotecontrol_autorepeat_remaining,
         allowedtypes=AC | HYBRID | GEN4 | GEN5,
         icon="mdi:home-clock",
-        scan_group=SCAN_GROUP_FAST,
     ),
     SolaXModbusSensorEntityDescription(
         key="software_version",
