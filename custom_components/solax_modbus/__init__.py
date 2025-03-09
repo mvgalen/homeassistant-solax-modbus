@@ -854,9 +854,6 @@ class SolaXModbusHub:
             self.plugin.localDataCallback(self)
         if not self.localsLoaded:
             await self._hass.async_add_executor_job(self.loadLocalData)
-        for reg in self.computedSensors:
-            descr = self.computedSensors[reg]
-            data[descr.key] = descr.value_function(0, descr, data)
 
         if group.readFollowUp is not None:
             if not await group.readFollowUp(self.data, data):
@@ -865,6 +862,10 @@ class SolaXModbusHub:
 
         for key, value in data.items():
             self.data[key] = value
+            
+        for reg in self.computedSensors:
+            descr = self.computedSensors[reg]
+            self.data[descr.key] = descr.value_function(0, descr, self.data)
 
         if res and self.writequeue and self.plugin.isAwake(self.data):  # self.awakeplugin(self.data):
             # process outstanding write requests
