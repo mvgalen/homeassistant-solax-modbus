@@ -5701,6 +5701,7 @@ SENSOR_TYPES_MAIN: list[SolaXModbusSensorEntityDescription] = [
         unit=REGISTER_S32,
         entity_registry_enabled_default=False,
         allowedtypes=AC | HYBRID | GEN3 | GEN4 | GEN5,
+        scan_group=SCAN_GROUP_FAST,
     ),
     SolaXModbusSensorEntityDescription(
         name="Meter 2 Export Total",
