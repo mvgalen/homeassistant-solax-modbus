@@ -6244,6 +6244,7 @@ SENSOR_TYPES_MAIN: list[SolaXModbusSensorEntityDescription] = [
         state_class=SensorStateClass.MEASUREMENT,
         allowedtypes=AC | HYBRID | MIC | GEN | GEN2 | GEN3 | GEN4 | GEN5,
         icon="mdi:home-lightning-bolt",
+        scan_group=SCAN_GROUP_FAST,
     ),
     SolaXModbusSensorEntityDescription(
         name="House Load Alt",
