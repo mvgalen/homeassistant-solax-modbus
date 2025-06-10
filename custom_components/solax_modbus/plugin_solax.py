@@ -149,7 +149,7 @@ def autorepeat_function_remotecontrol_recompute(initval, descr, datadict):
         ap_target = target
     elif power_control == "Enabled Grid Control":  # alternative computation for Power Control
         _LOGGER.debug(
-            f"target:{target} house_load_nett:{houseload_net} meas:{meas} inv_power:{inv_power}"
+            f"target:{target} house_load_nett:{houseload_nett} meas:{meas} inv_power:{inv_power}"
         )
         ap_target = target - houseload_nett  # subtract house load
         power_control = "Enabled Power Control"
