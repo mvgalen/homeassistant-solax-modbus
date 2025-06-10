@@ -139,7 +139,8 @@ def autorepeat_function_remotecontrol_recompute(initval, descr, datadict):
     meas = datadict.get("measured_power", 0)
     pv = datadict.get("pv_power_total", 0)
     timeout = datadict.get("remotecontrol_timeout",0)
-    houseload_nett = datadict.get("inverter_power", 0) - meas
+    inv_power = datadict.get("inverter_power", 0)
+    houseload_nett = inv_power - meas
     houseload_brut = pv - datadict.get("battery_power_charge", 0) - meas
     # Current SoC for capacity related calculations like Battery Hold/No Discharge
     battery_capacity = datadict.get("battery_capacity", 0)
@@ -147,6 +148,9 @@ def autorepeat_function_remotecontrol_recompute(initval, descr, datadict):
     if power_control == "Enabled Power Control":
         ap_target = target
     elif power_control == "Enabled Grid Control":  # alternative computation for Power Control
+        _LOGGER.debug(
+            f"target:{target} house_load_nett:{houseload_net} meas:{meas} inv_power:{inv_power}"
+        )
         ap_target = target - houseload_nett  # subtract house load
         power_control = "Enabled Power Control"
     elif power_control == "Enabled Self Use":  # alternative computation for Power Control
