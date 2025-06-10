@@ -175,8 +175,8 @@ def autorepeat_function_remotecontrol_recompute(initval, descr, datadict):
     elif power_control == "Disabled":
         ap_target = target
     old_ap_target = ap_target
-    ap_target = min(ap_target, import_limit - houseload_brut)
-    # _LOGGER.warning(f"import shaving: old_ap_target:{old_ap_target} new ap_target:{ap_target} max: {import_limit-houseload} min:{-export_limit-houseload}")
+    # ap_target = min(ap_target, import_limit - houseload_brut)
+    # _LOGGER.warning(f"peak shaving: old_ap_target:{old_ap_target} new ap_target:{ap_target} max: {import_limit-houseload} min:{-export_limit-houseload}")
     if old_ap_target != ap_target:
         _LOGGER.debug(
             f"import shaving: old_ap_target:{old_ap_target} new ap_target:{ap_target} max: {import_limit-houseload_brut}"
