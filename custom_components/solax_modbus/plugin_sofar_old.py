@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from homeassistant.components.number import NumberEntityDescription
 from homeassistant.components.select import SelectEntityDescription
 from homeassistant.components.button import ButtonEntityDescription
-from pymodbus.payload import BinaryPayloadBuilder, BinaryPayloadDecoder, Endian
+from .payload import BinaryPayloadBuilder, BinaryPayloadDecoder, Endian
 from custom_components.solax_modbus.const import *
 
 _LOGGER = logging.getLogger(__name__)
@@ -1111,12 +1111,12 @@ class sofar_old_plugin(plugin_base):
             invertertype = PV | X3  # Older Probably 3phase
         elif seriesnumber.startswith("SL1"):
             invertertype = PV | X3  # Older Probably 3phase
-        elif seriesnumber.startswith("SM1"):
-            invertertype = PV  # Not sure if 1 or 3phase?
         elif seriesnumber.startswith("SE1E"):
             invertertype = HYBRID | X1  # 3kW HYDxxxxES
         elif seriesnumber.startswith("SM1E"):
             invertertype = HYBRID | X1  # 3kW HYDxxxxES
+        elif seriesnumber.startswith("SM1"):
+            invertertype = PV  # Not sure if 1 or 3phase?
         elif seriesnumber.startswith("ZE1E"):
             invertertype = HYBRID | X1  # 3kW HYDxxxxES
         elif seriesnumber.startswith("ZM1E"):

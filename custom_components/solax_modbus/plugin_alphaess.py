@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from homeassistant.components.number import NumberEntityDescription
 from homeassistant.components.select import SelectEntityDescription
 from homeassistant.components.button import ButtonEntityDescription
-from pymodbus.payload import BinaryPayloadBuilder, BinaryPayloadDecoder, Endian
+from .payload import BinaryPayloadBuilder, BinaryPayloadDecoder, Endian
 from custom_components.solax_modbus.const import *
 from time import time
 
@@ -950,10 +950,7 @@ SENSOR_TYPES_MAIN: list[AlphaESSModbusSensorEntityDescription] = [
     AlphaESSModbusSensorEntityDescription(
         key="3phase_unbalanced_mode",
         register=0x811,
-        scale={
-            0: "Disabled",
-            1: "Enabled",
-        },
+        scale=value_function_disabled_enabled,
         allowedtypes=GEN | X3,
         internal=True,
     ),

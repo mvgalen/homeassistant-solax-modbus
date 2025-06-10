@@ -51,6 +51,7 @@ DOMAIN = "solax_modbus"
 INVERTER_IDENT = "inverter"
 DEFAULT_NAME = "SolaX"
 DEFAULT_INVERTER_NAME_SUFFIX = "Inverter"
+DEFAULT_INVERTER_POWER_KW = 100
 DEFAULT_SCAN_INTERVAL = 15
 DEFAULT_PORT = 502
 DEFAULT_MODBUS_ADDR = 1
@@ -58,6 +59,7 @@ DEFAULT_TCP_TYPE = "tcp"
 CONF_TCP_TYPE = "tcp_type"
 TMPDATA_EXPIRY = 120  # seconds before temp entities return to modbus value
 CONF_INVERTER_NAME_SUFFIX = "inverter_name_suffix"
+CONF_INVERTER_POWER_KW = "inverter_power_kw"
 CONF_READ_EPS = "read_eps"
 CONF_READ_DCB = "read_dcb"
 CONF_READ_PM = "read_pm"
@@ -90,6 +92,8 @@ CONF_SCAN_INTERVAL_FAST = "scan_interval_fast"
 SCAN_GROUP_DEFAULT = CONF_SCAN_INTERVAL  # default scan group, slow; should always work
 SCAN_GROUP_MEDIUM = CONF_SCAN_INTERVAL_MEDIUM  # medium speed scanning (energy, temp, soc...)
 SCAN_GROUP_FAST = CONF_SCAN_INTERVAL_FAST  # fast scanning (power,...)
+CONF_TIME_OUT = "time_out"
+DEFAULT_TIME_OUT = 5
 
 # ================================= Definitions for Sensor Declarations =================================================
 
@@ -99,6 +103,7 @@ REGISTER_U16 = "_uint16"
 REGISTER_U32 = "_uint32"
 REGISTER_S16 = "_int16"
 REGISTER_S32 = "_int32"
+REGISTER_F32 = "_float32"  # 32-bit float
 REGISTER_ULSB16MSB16 = "_ulsb16msb16"  # probably same as REGISTER_U32 - suggest to remove later
 REGISTER_STR = "_string"  # nr of bytes must be specified in wordcount and is 2*wordcount
 REGISTER_WORDS = "_words"  # nr or words must be specified in wordcount
@@ -202,7 +207,8 @@ class BaseModbusSensorEntityDescription(SensorEntityDescription):
     # When simply set to True, no initial value will be returned, but the block will be considered valid
     value_series: int = None  # if not None, the value is part of a series of values with similar properties
     # The name and key must contain a placeholder {} that is replaced by the preceding number
-
+    min_value: int = None
+    max_value: int = None
 
 @dataclass
 class BaseModbusButtonEntityDescription(ButtonEntityDescription):
@@ -279,7 +285,8 @@ def autorepeat_remaining(datadict, entitykey, timestamp):
 
 
 def value_function_pv_power_total(initval, descr, datadict):
-    return datadict.get("pv_power_1", 0) + datadict.get("pv_power_2", 0) + datadict.get("pv_power_3", 0)
+    vals = [v for k, v in datadict.items() if k.startswith("pv_power_")]
+    return None if any(p is None for p in vals) else sum(vals)
 
 
 def value_function_battery_output(initval, descr, datadict):
@@ -315,6 +322,12 @@ def value_function_battery_input_solis(initval, descr, datadict):
     else:
         return 0
 
+def value_function_disabled_enabled(initval, descr, datadict):
+    scale = {
+        0: "Disabled",
+        1: "Enabled",
+    }
+    return scale.get(initval, str(initval) + " Unknown Status")
 
 def value_function_grid_import(initval, descr, datadict):
     val = datadict.get("measured_power", 0)

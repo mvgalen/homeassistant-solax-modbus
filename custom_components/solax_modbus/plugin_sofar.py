@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from homeassistant.components.number import NumberEntityDescription
 from homeassistant.components.select import SelectEntityDescription
 from homeassistant.components.button import ButtonEntityDescription
-from pymodbus.payload import BinaryPayloadBuilder, BinaryPayloadDecoder, Endian
+from .payload import BinaryPayloadBuilder, BinaryPayloadDecoder, Endian
 from custom_components.solax_modbus.const import *
 
 _LOGGER = logging.getLogger(__name__)
@@ -153,6 +153,19 @@ def value_function_refluxcontrol(initval, descr, datadict):
     ]
 
 
+def value_function_epscontrol(initval, descr, datadict):
+    return [
+        (
+            "eps_control",
+            datadict.get("eps_control", datadict.get("eps_control")),
+        ),
+        (
+            "eps_wait_time",
+            0, # Always 0 as this is a reserved function that should not be used.
+        ),
+    ]
+
+
 # TIMING AND TOU DISABLED AS THESE ARE NOT WORKING
 # def value_function_timingmode(initval, descr, datadict):
 #     return  [ ('timing_id', datadict.get('timing_id', 0), ),
@@ -245,6 +258,21 @@ BUTTON_TYPES = [
         allowedtypes=HYBRID,
         write_method=WRITE_MULTI_MODBUS,
         value_function=value_function_refluxcontrol,
+    ),
+    SofarModbusButtonEntityDescription(
+        name="EPS: Update",
+        key="eps_control_update",
+        register=0x1029,
+        allowedtypes=HYBRID,
+        write_method=WRITE_MULTI_MODBUS,
+        value_function=value_function_epscontrol,
+    ),
+    SofarModbusButtonEntityDescription(
+        name="IV Curve Scan",
+        key="IV_curve_scan",
+        register=0x1027,
+        command=1,
+        allowedtypes=HYBRID,
     ),
     # TIMING AND TOU DISABLED AS THESE ARE NOT WORKING
     # SofarModbusButtonEntityDescription(
@@ -346,6 +374,20 @@ NUMBER_TYPES = [
         prevent_update=True,
         write_method=WRITE_DATA_LOCAL,
         icon="mdi:battery-sync",
+    ),
+    SofarModbusNumberEntityDescription(
+        name="EPS Wait Time",
+        key="eps_wait_time",
+        unit=REGISTER_U16,
+        fmt="i",
+        native_min_value=0,
+        native_max_value=21600,
+        native_step=1,
+        allowedtypes=HYBRID | X3 | EPS,
+        prevent_update=True,
+        write_method=WRITE_DATA_LOCAL,
+        entity_registry_enabled_default=False,
+        icon="mdi:power-plug-off",
     ),
     # TIMING AND TOU DISABLED AS THESE ARE NOT WORKING
     # SofarModbusNumberEntityDescription(
@@ -587,16 +629,17 @@ SELECT_TYPES = [
     #
     ###
     SofarModbusSelectEntityDescription(
-        name="EPS Control",
+        name="EPS Mode",
         key="eps_control",
-        register=0x1029,
+        unit=REGISTER_U16,
+        write_method=WRITE_DATA_LOCAL,
         option_dict={
             0: "Turn Off",
             1: "Turn On, Prohibit Cold Start",
             2: "Turn On, Enable Cold Start",
         },
         allowedtypes=HYBRID | X3 | EPS,
-        write_method=WRITE_MULTISINGLE_MODBUS,
+        icon="mdi:power-plug-off",
     ),
     # Does not work. 0x1035, 0x1036, and 0x1037 have to be written in one single chunk
     # SofarModbusSelectEntityDescription(
@@ -3122,10 +3165,9 @@ SENSOR_TYPES: list[SofarModbusSensorEntityDescription] = [
         allowedtypes=HYBRID,
     ),
     SofarModbusSensorEntityDescription(
-        name="EPS Control",
+        name="EPS Mode",
         key="eps_control",
         register=0x1029,
-        newblock=True,
         scale={
             0: "Turn Off",
             1: "Turn On, Prohibit Cold Start",
@@ -3133,15 +3175,21 @@ SENSOR_TYPES: list[SofarModbusSensorEntityDescription] = [
         },
         entity_registry_enabled_default=False,
         allowedtypes=HYBRID | X3 | EPS,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    SofarModbusSensorEntityDescription(
+        name="EPS Wait Time",
+        key="passive_eps_wait_time",
+        register=0x102A,
+        entity_registry_enabled_default=False,
+        allowedtypes=HYBRID | X3 | EPS,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     SofarModbusSensorEntityDescription(
         name="Battery Active Control",
         key="battery_active_control",
         register=0x102B,
-        scale={
-            0: "Disabled",
-            1: "Enabled",
-        },
+        scale=value_function_disabled_enabled,
         entity_registry_enabled_default=False,
         allowedtypes=HYBRID,
     ),
@@ -3149,10 +3197,7 @@ SENSOR_TYPES: list[SofarModbusSensorEntityDescription] = [
         name="Parallel Control",
         key="parallel_control",
         register=0x1035,
-        scale={
-            0: "Disabled",
-            1: "Enabled",
-        },
+        scale=value_function_disabled_enabled,
         allowedtypes=HYBRID | PV | X3 | PM,
     ),
     SofarModbusSensorEntityDescription(
@@ -3629,16 +3674,18 @@ SENSOR_TYPES: list[SofarModbusSensorEntityDescription] = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     SofarModbusSensorEntityDescription(
-        name="RO: Passive: Timeout",
-        key="ro_passive_mode_timeout",
+        name="Passive: Timeout",
+        key="passive_mode_timeout",
         register=0x1184,
+        entity_registry_enabled_default=False,
         allowedtypes=HYBRID,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     SofarModbusSensorEntityDescription(
         name="Passive: Timeout Action",
-        key="ro_passive_mode_timeout_action",
+        key="passive_mode_timeout_action",
         register=0x1185,
+        entity_registry_enabled_default=False,
         scale={
             0: "Force Standby",
             1: "Return to Previous Mode",
@@ -3677,37 +3724,6 @@ SENSOR_TYPES: list[SofarModbusSensorEntityDescription] = [
 
 
 BATTERY_SENSOR_TYPES: list[SofarModbusSensorEntityDescription] = [
-    # SofarModbusSensorEntityDescription(
-    #     name = "total voltage",
-    #     key = "total_voltage",
-    #     native_unit_of_measurement = UnitOfElectricPotential.VOLT,
-    #     device_class = SensorDeviceClass.VOLTAGE,
-    #     register = 0x900F,
-    #     scale = 0.1,
-    #     rounding = 1,
-    #     allowedtypes = BAT_BTS,
-    # ),
-    # SofarModbusSensorEntityDescription(
-    #     name = "total current",
-    #     key = "total_current",
-    #     native_unit_of_measurement = UnitOfElectricCurrent.AMPERE,
-    #     device_class = SensorDeviceClass.CURRENT,
-    #     register = 0x9010,
-    #     unit = REGISTER_S16,
-    #     scale = 0.1,
-    #     rounding = 1,
-    #     allowedtypes = BAT_BTS,
-    # ),
-    # SofarModbusSensorEntityDescription(
-    #     name = "BMS Manufacture Name",
-    #     key = "bms_manufacture_name",
-    #     register = 0x9007,
-    #     newblock = True,
-    #     unit = REGISTER_STR,
-    #     wordcount=4,
-    #     entity_category = EntityCategory.DIAGNOSTIC,
-    #     allowedtypes = BAT_BTS,
-    # ),
     SofarModbusSensorEntityDescription(
         name="BMS Version",
         key="bms_version",
@@ -3721,10 +3737,9 @@ BATTERY_SENSOR_TYPES: list[SofarModbusSensorEntityDescription] = [
         name="Realtime Capacity",
         key="realtime_capacity",
         native_unit_of_measurement=PERCENTAGE,
-        device_class=SensorDeviceClass.BATTERY,
         register=0x900E,
-        #scale=0.1,
         allowedtypes=BAT_BTS,
+        icon="mdi:battery-clock",
     ),
     SofarModbusSensorEntityDescription(
         name="Total Voltage",
@@ -3757,9 +3772,9 @@ BATTERY_SENSOR_TYPES: list[SofarModbusSensorEntityDescription] = [
         name="SOH",
         key="soh",
         native_unit_of_measurement=PERCENTAGE,
-        device_class=SensorDeviceClass.BATTERY,
         register=0x9013,
         allowedtypes=BAT_BTS,
+        icon="mdi:battery-heart",
     ),
     SofarModbusSensorEntityDescription(
         name="Pack ID",
@@ -3801,8 +3816,8 @@ BATTERY_SENSOR_TYPES: list[SofarModbusSensorEntityDescription] = [
         value_series=16,
     ),
     SofarModbusSensorEntityDescription(
-        name="cell min voltage",
-        key="cell_min_voltage",
+        name="cell max voltage",
+        key="cell_max_voltage",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         device_class=SensorDeviceClass.VOLTAGE,
         register=0x9069,
@@ -3811,8 +3826,8 @@ BATTERY_SENSOR_TYPES: list[SofarModbusSensorEntityDescription] = [
         allowedtypes=BAT_BTS,
     ),
     SofarModbusSensorEntityDescription(
-        name="cell max voltage",
-        key="cell_max_voltage",
+        name="cell min voltage",
+        key="cell_min_voltage",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         device_class=SensorDeviceClass.VOLTAGE,
         register=0x906A,
@@ -3963,7 +3978,7 @@ class battery_config(base_battery_config):
                 serial = str(decoder.decode_string(self.batt_pack_model_len * 2).decode("ascii"))
                 return serial
         except:
-            _LOGGER.warn(f"Cannot read batt pack serial")
+            _LOGGER.warning(f"Cannot read batt pack serial")
             return None
 
     async def get_batt_pack_sw_version(self, hub, new_data, key_prefix):

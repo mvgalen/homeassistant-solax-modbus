@@ -14,6 +14,7 @@ from weakref import ref as WeakRef
 
 from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
+from pymodbus.pdu import register_message
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
@@ -22,6 +23,16 @@ from homeassistant.const import (
     CONF_PORT,
     EVENT_HOMEASSISTANT_STARTED,
     Platform,
+    PERCENTAGE,
+    UnitOfApparentPower,
+    UnitOfElectricCurrent,
+    UnitOfElectricPotential,
+    UnitOfEnergy,
+    UnitOfFrequency,
+    UnitOfPower,
+    UnitOfTemperature,
+    UnitOfTime,
+    CONF_SCAN_INTERVAL,
 )
 from homeassistant.core import HomeAssistant, callback
 import homeassistant.helpers.config_validation as cv
@@ -64,6 +75,7 @@ from pymodbus.exceptions import ConnectionException, ModbusIOException
 from .payload import BinaryPayloadBuilder, BinaryPayloadDecoder, Endian
 from pymodbus.framer import FramerType
 
+
 from .const import (
     INVERTER_IDENT,
     CONF_BAUDRATE,
@@ -75,8 +87,10 @@ from .const import (
     CONF_SERIAL_PORT,
     CONF_TCP_TYPE,
     CONF_INVERTER_NAME_SUFFIX,
+    CONF_INVERTER_POWER_KW,
     CONF_CORE_HUB,
     DEFAULT_INVERTER_NAME_SUFFIX,
+    DEFAULT_INVERTER_POWER_KW,
     DEFAULT_BAUDRATE,
     DEFAULT_INTERFACE,
     DEFAULT_MODBUS_ADDR,
@@ -96,11 +110,14 @@ from .const import (
     REGISTER_U8L,
     REGISTER_U16,
     REGISTER_U32,
+    REGISTER_F32,
     REGISTER_ULSB16MSB16,
     REGISTER_WORDS,
     SCAN_GROUP_DEFAULT,
     # PLUGIN_PATH,
     SLEEPMODE_LASTAWAKE,
+    CONF_TIME_OUT,
+    DEFAULT_TIME_OUT,
 )
 
 PLATFORMS = [Platform.BUTTON, Platform.NUMBER, Platform.SELECT, Platform.SENSOR, Platform.SWITCH]
@@ -242,6 +259,7 @@ class SolaXModbusHub:
                 interface = "tcp"
         serial_port = config.get(CONF_SERIAL_PORT, DEFAULT_SERIAL_PORT)
         baudrate = int(config.get(CONF_BAUDRATE, DEFAULT_BAUDRATE))
+        time_out = int(config.get(CONF_TIME_OUT, DEFAULT_TIME_OUT))
         _LOGGER.debug(f"Setup {DOMAIN}.{name}")
         _LOGGER.debug(f"solax serial port {serial_port} interface {interface}")
 
@@ -255,26 +273,30 @@ class SolaXModbusHub:
                 parity="N",
                 stopbits=1,
                 bytesize=8,
-                timeout=15,
+                timeout=time_out,
                 retries=6,
             )
         elif interface == "tcp":
             if tcp_type == "rtu":
-                self._client = AsyncModbusTcpClient(host=host, port=port, timeout=15, framer=FramerType.RTU, retries=6)
+                self._client = AsyncModbusTcpClient(
+                    host=host, port=port, timeout=time_out, framer=FramerType.RTU, retries=6
+                )
             elif tcp_type == "ascii":
                 self._client = AsyncModbusTcpClient(
-                    host=host, port=port, timeout=15, framer=FramerType.ASCII, retries=6
+                    host=host, port=port, timeout=time_out, framer=FramerType.ASCII, retries=6
                 )
             else:
-                self._client = AsyncModbusTcpClient(host=host, port=port, timeout=15, retries=6)
+                self._client = AsyncModbusTcpClient(host=host, port=port, timeout=time_out, retries=6)
         self._lock = asyncio.Lock()
         self._name = name
         self.inverterNameSuffix = config.get(CONF_INVERTER_NAME_SUFFIX)
+        self.inverterPowerKw = config.get(CONF_INVERTER_POWER_KW, DEFAULT_INVERTER_POWER_KW)
         self._modbus_addr = modbus_addr
         self._seriesnumber = "still unknown"
         self.interface = interface
         self.read_serial_port = serial_port
         self._baudrate = int(baudrate)
+        self._time_out = int(time_out)
         self.groups = {}  # group info, below
         self.empty_interval_group = lambda: SimpleNamespace(interval=0, unsub_interval_method=None, device_groups={})
         self.empty_device_group = lambda: SimpleNamespace(
@@ -540,24 +562,39 @@ class SolaXModbusHub:
 
     async def async_read_holding_registers(self, unit, address, count):
         """Read holding registers."""
-        kwargs = {"slave": unit} if unit else {}
+        #kwargs = {"slave": unit} if unit else {}
         async with self._lock:
             await self._check_connection()
             try:
-                resp = await self._client.read_holding_registers(address=address, count=count, **kwargs)
+                pdu_request = register_message.ReadHoldingRegistersRequest(address=address, count=count, dev_id=unit)
+                resp = await self._client.execute(False, pdu_request)
+                if resp.transaction_id!=0 and resp.dev_id != pdu_request.dev_id:
+                    _LOGGER.warning("Modbus: ERROR: expected id %s but got %s, IGNORING.", pdu_request.dev_id, resp.dev_id)
+                    return None
+                if resp.transaction_id!=0 and pdu_request.transaction_id != resp.transaction_id:
+                    _LOGGER.warning("Modbus: ERROR: expected transaction %s but got %s, IGNORING.", pdu_request.transaction_id, resp.transaction_id)
+                    return None
             except ModbusException as exception_error:
                 error = f"Error: device: {unit} address: {address} -> {exception_error!s}"
                 _LOGGER.error(error)
                 return None
+
         return resp
 
     async def async_read_input_registers(self, unit, address, count):
         """Read input registers."""
-        kwargs = {"slave": unit} if unit else {}
+        #kwargs = {"slave": unit} if unit else {}
         async with self._lock:
             await self._check_connection()
             try:
-                resp = await self._client.read_input_registers(address=address, count=count, **kwargs)
+                pdu_request = register_message.ReadInputRegistersRequest(address=address, count=count, dev_id=unit)
+                resp = await self._client.execute(False, pdu_request)
+                if resp.transaction_id!=0 and resp.dev_id != pdu_request.dev_id:
+                    _LOGGER.warning("Modbus: ERROR: expected id %s but got %s, IGNORING.", pdu_request.dev_id, resp.dev_id)
+                    return None
+                if resp.transaction_id!=0 and pdu_request.transaction_id != resp.transaction_id:
+                    _LOGGER.warning("Modbus: ERROR: expected transaction %s but got %s, IGNORING.", pdu_request.transaction_id, resp.transaction_id)
+                    return None
             except ModbusException as exception_error:
                 error = f"Error: device: {unit} address: {address} -> {exception_error!s}"
                 _LOGGER.error(error)
@@ -658,6 +695,8 @@ class SolaXModbusHub:
                     builder.add_32bit_uint(value)
                 elif typ == REGISTER_S32:
                     builder.add_32bit_int(value)
+                elif typ == REGISTER_F32:
+                    builder.add_32bit_float(value)
                 else:
                     _LOGGER.error(f"unsupported unit type: {typ} for {key}")
             payload = builder.to_registers()
@@ -702,6 +741,8 @@ class SolaXModbusHub:
                 val = decoder.decode_16bit_int()
             elif descr.unit == REGISTER_U32:
                 val = decoder.decode_32bit_uint()
+            elif descr.unit == REGISTER_F32:
+                val = decoder.decode_32bit_float()
             elif descr.unit == REGISTER_S32:
                 val = decoder.decode_32bit_int()
             elif descr.unit == REGISTER_STR:
@@ -748,6 +789,32 @@ class SolaXModbusHub:
                 return_value = round(val * descr.scale, descr.rounding)
             except:
                 return_value = val  # probably a REGISTER_WORDS instance
+            if descr.native_unit_of_measurement == UnitOfFrequency.HERTZ:
+                min_val = getattr(descr, "min_value", 20)
+                max_val = getattr(descr, "max_value", 80)
+            if descr.native_unit_of_measurement == PERCENTAGE:
+                min_val = getattr(descr, "min_value", 0)
+                max_val = getattr(descr, "max_value", 100)
+            elif descr.native_unit_of_measurement == UnitOfTemperature.CELSIUS:
+                min_val = getattr(descr, "min_value", -100)
+                max_val = getattr(descr, "max_value", 200)
+            elif descr.native_unit_of_measurement == UnitOfPower.KILO_WATT:
+                min_val = getattr(descr, "min_value", -self.inverterPowerKw *2)
+                max_val = getattr(descr, "max_value", +self.inverterPowerKw *2)
+            elif descr.native_unit_of_measurement == UnitOfElectricCurrent.AMPERE:
+                min_val = getattr(descr, "min_value", -self.inverterPowerKw *2)
+                max_val = getattr(descr, "max_value", +self.inverterPowerKw *2)
+            elif descr.native_unit_of_measurement == UnitOfElectricPotential.VOLT:
+                min_val = getattr(descr, "min_value", 0)
+                max_val = getattr(descr, "max_value", 2000)
+            else:
+                min_val = getattr(descr, "min_value", None)
+                max_val = getattr(descr, "max_value", None)
+
+            if min_val is not None and return_value < min_val:
+                raise ModbusIOException(f"Value {return_value} of '{descr.key}' lower than {min_val}")
+            if max_val is not None and return_value > max_val:
+                raise ModbusIOException(f"Value {return_value} of '{descr.key}' greater than {max_val}")
         # if (descr.sleepmode != SLEEPMODE_LASTAWAKE) or self.awakeplugin(self.data): self.data[descr.key] = return_value
         if (self.tmpdata_expiry.get(descr.key, 0) == 0) and (
             (descr.sleepmode != SLEEPMODE_LASTAWAKE) or self.plugin.isAwake(self.data)
@@ -776,7 +843,7 @@ class SolaXModbusHub:
         except Exception as ex:
             errmsg = f"exception {str(ex)} "
         else:
-            if realtime_data.isError():
+            if realtime_data is None or realtime_data.isError():
                 errmsg = f"read_error "
         if errmsg == None:
             decoder = BinaryPayloadDecoder.fromRegisters(
@@ -806,6 +873,7 @@ class SolaXModbusHub:
                     if descr.unit in (
                         REGISTER_S32,
                         REGISTER_U32,
+                        REGISTER_F32,
                         REGISTER_ULSB16MSB16,
                     ):
                         prevreg = reg + 2
@@ -1119,6 +1187,8 @@ class SolaXCoreModbusHub(SolaXModbusHub, CoreModbusHub):
                     builder.add_16bit_int(value)
                 elif typ == REGISTER_U32:
                     builder.add_32bit_uint(value)
+                elif typ == REGISTER_F32:
+                    builder.add_32bit_float(value)
                 elif typ == REGISTER_S32:
                     builder.add_32bit_int(value)
                 else:

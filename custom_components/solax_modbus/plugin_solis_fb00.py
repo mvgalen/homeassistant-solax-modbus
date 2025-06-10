@@ -5,7 +5,7 @@ from dataclasses import dataclass
 # from homeassistant.components.select import SelectEntityDescription
 # from homeassistant.components.button import ButtonEntityDescription
 # from homeassistant.components.switch import SwitchEntityDescription
-from pymodbus.payload import BinaryPayloadBuilder, BinaryPayloadDecoder, Endian
+from .payload import BinaryPayloadBuilder, BinaryPayloadDecoder, Endian
 from .const import *
 
 _LOGGER = logging.getLogger(__name__)
@@ -510,7 +510,7 @@ BUTTON_TYPES = [
     SolisModbusButtonEntityDescription(
         name="Update Discharge Times 6",
         key="update_discharge_times_6",
-        register=43787,
+        register=43788,
         allowedtypes=HYBRID,
         write_method=WRITE_MULTI_MODBUS,
         icon="mdi:battery-clock",
