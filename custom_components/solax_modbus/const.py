@@ -312,6 +312,7 @@ def value_function_pv_power_total(initval, descr, datadict):
         else: total += v 
         i += 1
     return total
+    #return datadict.get("pv_power_1", 0) + datadict.get("pv_power_2", 0) + datadict.get("pv_power_3", 0)
 
 def value_function_battery_output(initval, descr, datadict):
     val = datadict.get("battery_power_charge", 0)
