@@ -266,6 +266,7 @@ class BaseModbusNumberEntityDescription(NumberEntityDescription):
     read_scale_exceptions: list = None
     read_scale: float = 1
     fmt: str = None
+    suggested_display_precision: int = 0
     scale: float = 1
     state: str = None
     max_exceptions: list = None  #  None or list with structue [ ('U50EC' , 40,) ]
@@ -544,4 +545,5 @@ for h in range(0, 24):
         ):  # add extra entry 23:59
             TIME_OPTIONS[(m + 4) * 256 + h] = f"{h:02}:{m+4:02}"
             TIME_OPTIONS_GEN4[h * 256 + m + 4] = f"{h:02}:{m+4:02}"
+
 
