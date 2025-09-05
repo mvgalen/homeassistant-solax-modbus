@@ -266,6 +266,7 @@ class BaseModbusNumberEntityDescription(NumberEntityDescription):
     read_scale_exceptions: list = None
     read_scale: float = 1
     fmt: str = None
+    suggested_display_precision: int = 0
     scale: float = 1
     state: str = None
     max_exceptions: list = None  #  None or list with structue [ ('U50EC' , 40,) ]
